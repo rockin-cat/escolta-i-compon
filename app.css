@@ -189,3 +189,7 @@ label.f textarea{min-height:88px;resize:vertical}
 .desti legend{font-weight:700;margin-bottom:4px}
 .repte-ol{margin:0;padding-left:22px;display:grid;gap:8px}
 .repte-ol li span{display:block;color:var(--muted);font-size:14px}
+
+.acts-lab{font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);align-self:center;margin-left:6px}
+.acts-lab:first-child{margin-left:0}
+.acts button[aria-current="true"]{background:var(--ink);color:var(--ground);border-color:var(--ink)}

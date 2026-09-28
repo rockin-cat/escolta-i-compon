@@ -348,7 +348,7 @@ function renderEditor(){
       <p class="hint">L'enllaç porta l'activitat a dins: l'alumnat l'obre directament, sense cap altra activitat ni el mode professorat. Els canvis que facis es guarden en aquest navegador.</p>
     </div>
     <div class="panel">
-      <h2>Activitat</h2>
+      <h2>Estàs editant: ${esc(a.title || "una activitat nova, encara sense títol")}</h2>
       <label class="f">Títol<input id="a-title" data-a="title" value="${esc(a.title)}" placeholder="p. ex. Timbres i instruments"></label>
       <label class="f">Instruccions<textarea id="a-ins" data-a="instructions" placeholder="Si ho deixes buit: «Escolta els fragments musicals, llegeix bé les descripcions i arrossega cada fragment a la descripció que li correspon.»">${esc(a.instructions)}</textarea></label>
       <label class="f">Missatge quan ho encerten tot<input id="a-fb" data-a="feedback" value="${esc(a.feedback)}" placeholder="Si ho deixes buit: «Molt bé!»"></label>
@@ -846,10 +846,13 @@ function renderModes(){
   $("#modes").innerHTML = `<button type="button" data-mode="alumne" aria-pressed="${state.mode === "alumne"}">Alumnat</button><button type="button" data-mode="prof" aria-pressed="${state.mode === "prof"}">Professorat</button>`;
 }
 function renderTabs(){
-  const list = SRC().activitats;
-  const nav = $("#acts");
+  const list = SRC().activitats, nav = $("#acts");
   nav.hidden = list.length < 2 && state.mode !== "prof";
-  nav.innerHTML = list.map(a => `<button type="button" data-act="${a.id}" aria-current="${a.id === state.actId}">${esc(a.title || "Sense títol")}</button>`).join("");
+  const tab = a => `<button type="button" data-act="${a.id}" aria-current="${a.id === state.actId}">${esc(a.title || "Nova activitat")}</button>`;
+  if (state.mode !== "prof"){ nav.innerHTML = list.map(tab).join(""); return; }
+  const oficials = list.filter(a => DATA.activitats.some(o => o.id === a.id)), meves = list.filter(a => !oficials.includes(a));
+  nav.innerHTML = (oficials.length ? `<span class="acts-lab">De Rockin</span>${oficials.map(tab).join("")}` : "")
+    + (meves.length ? `<span class="acts-lab">Les meves</span>${meves.map(tab).join("")}` : "");
 }
 function render(){ renderModes(); renderTabs(); state.mode === "prof" ? renderEditor() : renderGame(); }
 
