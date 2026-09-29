@@ -192,4 +192,10 @@ label.f textarea{min-height:88px;resize:vertical}
 
 .acts-lab{font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);align-self:center;margin-left:6px}
 .acts-lab:first-child{margin-left:0}
+
+/* logo del centre als fulls impresos */
+.logo-tria{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.logo-prev{font-size:13px;color:var(--muted);display:inline-flex;align-items:center;min-height:36px}
+.logo-prev img{max-height:36px;max-width:130px;background:#fff;border:1px solid var(--line);border-radius:4px;padding:3px}
+label.btn{cursor:pointer}
 .acts button[aria-current="true"]{background:var(--ink);color:var(--ground);border-color:var(--ink)}

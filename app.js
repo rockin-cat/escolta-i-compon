@@ -10,7 +10,13 @@ let DATA = {activitats: []};
 const TEACHER = new URLSearchParams(location.search).has("professorat");
 // Adreça de l'aplicació web de Google Apps Script de la biblioteca (Implementa → Aplicació web).
 const URL_BIBLIOTECA = "https://script.google.com/macros/s/AKfycbwZJIcfAZKnd643SiQGJ8QGiqKCiZmtLBSLhsy7a1rJAxxDKQpygDnU73naST_d7LMM/exec";
-const K_DRAFT = "ea-meves-activitats", K_CODI = "ea-codi-biblioteca", K_AUTOR = "ea-autor";
+const K_DRAFT = "ea-meves-activitats", K_CODI = "ea-codi-biblioteca", K_AUTOR = "ea-autor", K_LOGO = "ea-logo";
+const ICO_ROCKIN = "https://rockin.cat/wp-content/uploads/2022/07/cropped-rockin-favicon-192x192.png";
+// Capçalera dels fulls impresos: logo del centre (opcional) + icona rodona de Rockin.
+function logosHTML(){
+  const l = llegirLocal(K_LOGO);
+  return `<div class="logos">${l ? `<img class="centre" src="${l}" alt=""><span class="sep"></span>` : ""}<img class="rk" src="${ICO_ROCKIN}" alt="Rockin"></div>`;
+}
 let SHARED = false;   // true quan la pàgina s'obre amb un enllaç d'activitat (#a=...)
 function llegirLocal(k){ try { return localStorage.getItem(k) || ""; } catch (e) { return ""; } }
 function escriureLocal(k, v){ try { v ? localStorage.setItem(k, v) : localStorage.removeItem(k); } catch (e) {} }
@@ -608,7 +614,11 @@ function printRepte(a){
 @page{size:A4;margin:14mm}
 body{-webkit-print-color-adjust:exact;print-color-adjust:exact;font-family:Ubuntu,Helvetica,Arial,sans-serif;color:#221F20;font-size:11pt;line-height:1.45;margin:0}
 .cap{display:flex;justify-content:space-between;align-items:center;border-bottom:3px solid #FDBE10;padding-bottom:8px}
-.cap img{height:46px;background:#FDBE10;padding:6px 12px;border-radius:2px}
+.cap .logos{display:flex;align-items:center;gap:10px}
+.cap .logos img{display:block}
+.cap .rk{width:14mm;height:14mm;border-radius:50%}
+.cap .centre{max-height:14mm;max-width:42mm;object-fit:contain}
+.cap .sep{width:1px;height:9mm;background:#ccc}
 h1{font-family:Lora,Georgia,serif;font-size:21pt;margin:12px 0 2px}
 .sub{color:#555;margin:0 0 12px}
 ol{padding:0;margin:0;list-style:none;display:grid;gap:10px;counter-reset:n}
@@ -622,7 +632,7 @@ li p{margin:0 0 6px}
 footer{margin-top:12px;font-size:8pt;color:#777}
 @media screen{body{max-width:190mm;margin:16px auto;padding:0 12px}}
 </style></head><body>
-<header class="cap"><img src="https://rockin.cat/wp-content/uploads/2022/07/rockin-logo.svg" alt="Rockin"><div>${s.banda ? `Grup: <b>${esc(s.banda)}</b>` : ""}</div></header>
+<header class="cap">${logosHTML()}<div>${s.banda ? `Grup: <b>${esc(s.banda)}</b>` : ""}</div></header>
 <h1>El nostre repte de composició</h1>
 <p class="sub">${on} · Idees sortides de l'activitat «${esc(a.title)}»</p>
 <ol>${L.map(x => { const ex = a.items.find(i => i.id === x.exemple); return `<li><h2>${esc(x.titol)}</h2>${x.desc ? `<p>${esc(x.desc)}</p>` : ""}${x.com ? `<p><b>Com provar-ho:</b> ${esc(x.com)}</p>` : ""}${ex && ex.title ? `<p><small>🎧 Exemple: ${esc(ex.title)}</small></p>` : ""}<div class="marques"><span>Ho hem provat</span><span>Ens agrada</span><span>Ho deixem</span></div></li>`; }).join("")}</ol>
@@ -643,15 +653,29 @@ function printForm(a){
       <label class="f">Docent<input id="pr-docent" value="${esc(llegirLocal(K_AUTOR))}" placeholder="Nom i cognom"></label>
       <label class="f">Grup<input id="pr-grup" value="${esc(llegirLocal("ea-grup"))}" placeholder="p. ex. 2n ESO B"></label>
     </div>
+    <div class="logo-tria">
+      <span class="logo-prev" id="pr-logo-prev"></span>
+      <label class="btn ghost">📎 Logo del centre<input type="file" id="pr-logo" accept="image/*" hidden></label>
+      <button class="btn ghost" id="pr-logo-out" hidden>Treu el logo</button>
+    </div>
     <div class="share-row">
       <button class="btn primary" data-print="alumne">🖨️ Fitxa de l'alumnat</button>
       <button class="btn" data-print="docent">🖨️ Full del docent (solucions)</button>
       <button class="btn ghost" id="pr-cancel">Tanca</button>
     </div>
     <p class="hint">Les lletres dels fragments es barregen cada vegada que imprimeixes. Imprimeix els dos fulls alhora perquè el del docent tingui les mateixes lletres.</p>
+    <p class="hint">El logo del centre es desa en aquest navegador i surt també al full del repte de composició.</p>
   </div>`;
   let ordre = null;
   $("#pr-cancel").onclick = () => $("#share-out").innerHTML = "";
+  const pintaLogo = () => {
+    const l = llegirLocal(K_LOGO);
+    $("#pr-logo-prev").innerHTML = l ? `<img src="${l}" alt="">` : "Cap logo (només hi surt la icona de Rockin)";
+    $("#pr-logo-out").hidden = !l;
+  };
+  pintaLogo();
+  $("#pr-logo").onchange = e => { const f = e.target.files[0]; e.target.value = ""; if (f) llegirLogo(f, pintaLogo); };
+  $("#pr-logo-out").onclick = () => { escriureLocal(K_LOGO, ""); pintaLogo(); };
   $("#share-out").querySelectorAll("[data-print]").forEach(b => b.onclick = () => {
     const docent = $("#pr-docent").value.trim(), grup = $("#pr-grup").value.trim();
     if (docent) escriureLocal(K_AUTOR, docent);
@@ -660,12 +684,32 @@ function printForm(a){
     printSheet(cleanAct(a), b.dataset.print === "docent", docent, grup, ordre);
   });
 }
+// Llegeix la imatge del centre, la redueix i la desa en aquest navegador.
+function llegirLogo(fitxer, fet){
+  const r = new FileReader();
+  r.onerror = () => toast("No s'ha pogut llegir el fitxer.");
+  r.onload = () => {
+    const dades = String(r.result);
+    const desa = d => { escriureLocal(K_LOGO, d); if (!llegirLocal(K_LOGO)) toast("La imatge és massa gran. Prova-ho amb una de més petita."); fet(); };
+    if (/^data:image\/svg/.test(dades)) return desa(dades.length < 300000 ? dades : "");
+    const img = new Image();
+    img.onerror = () => toast("No s'ha pogut obrir la imatge.");
+    img.onload = () => {
+      const k = Math.min(1, 360 / Math.max(img.width, img.height)), c = document.createElement("canvas");
+      c.width = Math.max(1, Math.round(img.width * k)); c.height = Math.max(1, Math.round(img.height * k));
+      c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+      desa(c.toDataURL("image/png"));
+    };
+    img.src = dades;
+  };
+  r.readAsDataURL(fitxer);
+}
 function printSheet(a, docentView, docent, grup, ordre){
   const lletra = id => LETTERS[ordre.cancons.indexOf(id)] || "?";
   const vocab = (a.vocab || []), numV = id => ordre.vocab.indexOf(id) + 1;
   const sol = t => docentView ? `<span class="sol">${esc(t)}</span>` : "";
   const cap = `<header class="cap">
-      <img src="https://rockin.cat/wp-content/uploads/2022/07/rockin-logo.svg" alt="Rockin">
+      ${logosHTML()}
       <div class="dades">
         ${docentView ? `<div><b>Full del docent · solucions</b></div>` : `<div>Nom i cognoms: <span class="linia"></span></div>`}
         <div>Grup: <b>${esc(grup) || '<span class="linia curta"></span>'}</b> &nbsp; Data: <span class="linia curta"></span></div>
@@ -701,7 +745,11 @@ function printSheet(a, docentView, docent, grup, ordre){
 *{box-sizing:border-box}
 body{-webkit-print-color-adjust:exact;print-color-adjust:exact;font-family:Ubuntu,Helvetica,Arial,sans-serif;color:#221F20;font-size:10.5pt;line-height:1.4;margin:0}
 .cap{display:flex;justify-content:space-between;align-items:center;gap:16px;border-bottom:3px solid #FDBE10;padding-bottom:8px}
-.cap img{height:46px;background:#FDBE10;padding:6px 12px;border-radius:2px}
+.cap .logos{display:flex;align-items:center;gap:10px}
+.cap .logos img{display:block}
+.cap .rk{width:14mm;height:14mm;border-radius:50%}
+.cap .centre{max-height:14mm;max-width:42mm;object-fit:contain}
+.cap .sep{width:1px;height:9mm;background:#ccc}
 .dades{display:grid;gap:4px;text-align:right;font-size:10pt}
 .linia{display:inline-block;width:62mm;border-bottom:1px solid #221F20;height:1em;vertical-align:bottom}
 .linia.curta{width:28mm}
