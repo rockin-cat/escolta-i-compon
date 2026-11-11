@@ -4,6 +4,8 @@
  * Desa i llegeix les activitats que comparteix el professorat en una carpeta de Google Drive.
  *
  * 1. Tria el codi del professorat. Només qui el sàpiga podrà compartir i veure propostes.
+ *    No l'escriguis aquí (aquest fitxer és públic): posa'l a Configuració del projecte →
+ *    Propietats de l'script, amb el nom CODI.
  * 2. Executa una vegada la funció «configurar» (crea la carpeta a Drive i demana permís).
  *    Si ja tens una carpeta, pots enganxar-ne l'identificador a CARPETA_ID.
  * 3. Implementa → Nova implementació → Aplicació web
@@ -12,7 +14,7 @@
  *    i copia l'adreça que acaba en /exec a URL_BIBLIOTECA (app.js).
  */
 const CARPETA_ID = '';   // buit: es fa servir la carpeta que crea «configurar»
-const CODI = 'rockin';
+const CODI = PropertiesService.getScriptProperties().getProperty('CODI') || '';   // el codi és a les propietats de l'script, no aquí
 
 function carpetaBiblioteca() {
   if (CARPETA_ID) return DriveApp.getFolderById(CARPETA_ID);
@@ -33,7 +35,7 @@ function configurar() {
 
 function doGet(e) {
   const p = e.parameter || {};
-  if (p.codi !== CODI) return resposta({ ok: false, error: 'codi' });
+  if (!CODI || p.codi !== CODI) return resposta({ ok: false, error: 'codi' });
   const carpeta = carpetaBiblioteca();
 
   // Obrir una activitat concreta
@@ -61,7 +63,7 @@ function doGet(e) {
 function doPost(e) {
   let dades;
   try { dades = JSON.parse(e.postData.contents); } catch (err) { return resposta({ ok: false, error: 'format' }); }
-  if (dades.codi !== CODI) return resposta({ ok: false, error: 'codi' });
+  if (!CODI || dades.codi !== CODI) return resposta({ ok: false, error: 'codi' });
   const a = dades.activitat;
   if (!a || !a.title || !Array.isArray(a.items) || !dades.nom) return resposta({ ok: false, error: 'format' });
 
