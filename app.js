@@ -96,9 +96,9 @@ document.addEventListener("click", e => {
   const p = b.closest(".player"), f = $("iframe", p);
   if (b.classList.contains("play")){
     if (p.classList.contains("playing")){ ytCmd(f, "pauseVideo"); p.classList.remove("playing"); b.textContent = "▶ Escolta"; }
-    else { stopAll(p); ytCmd(f, "playVideo"); p.classList.add("playing"); b.textContent = "❚❚ Pausa"; }
+    else { stopAll(p); ytCmd(f, "playVideo"); p.classList.add("playing"); b.textContent = "❚Pausa"; }
   } else if (b.classList.contains("restart")){
-    stopAll(p); ytCmd(f, "seekTo", [Number(p.dataset.start) || 0, true]); ytCmd(f, "playVideo"); p.classList.add("playing"); $(".play", p).textContent = "❚❚ Pausa";
+    stopAll(p); ytCmd(f, "seekTo", [Number(p.dataset.start) || 0, true]); ytCmd(f, "playVideo"); p.classList.add("playing"); $(".play", p).textContent = "❚Pausa";
   } else if (b.classList.contains("peek")){
     $(".cover", p).remove();
   }
@@ -343,12 +343,12 @@ function renderEditor(){
   }).join("");
   app.innerHTML = `<div class="editor">
     <div class="panel share">
-      <div class="item-head"><h2 style="margin-right:auto">Comparteix aquesta activitat</h2><button class="btn small" data-ed="newact">➕ Crea una activitat des de zero</button></div>
+      <div class="item-head"><h2 style="margin-right:auto">Comparteix aquesta activitat</h2><button class="btn small" data-ed="newact">Crea una activitat des de zero</button></div>
       <div class="share-row">
-        <button class="btn primary" data-ed="link">🔗 Enllaç per a l'alumnat</button>
-        <button class="btn" data-ed="publish">📤 Comparteix a la biblioteca</button>
-        <button class="btn" data-ed="biblio">📚 Biblioteca de propostes</button>
-        <button class="btn" data-ed="print">🖨️ Versió imprimible</button>
+        <button class="btn primary" data-ed="link">Enllaç per a l'alumnat</button>
+        <button class="btn" data-ed="publish">Comparteix a la biblioteca</button>
+        <button class="btn" data-ed="biblio">Biblioteca de propostes</button>
+        <button class="btn" data-ed="print">Versió imprimible</button>
       </div>
       <div id="share-out"></div>
       <p class="hint">L'enllaç porta l'activitat a dins: l'alumnat l'obre directament, sense cap altra activitat ni el mode professorat. Els canvis que facis es guarden en aquest navegador.</p>
@@ -391,7 +391,7 @@ function renderEditor(){
 function saveBar(){
   const m = state.msg || "Els canvis es guarden automàticament en aquest navegador.";
   return `<div class="savebar"><span class="msg" role="status">${esc(m)}</span>
-    <button class="btn" data-ed="newact">➕ Activitat des de zero</button>
+    <button class="btn" data-ed="newact">Activitat des de zero</button>
     <button class="btn ghost" data-ed="discard" title="Esborra els canvis d'aquest navegador i torna a les activitats oficials">Restaura les oficials</button>
     <button class="btn ghost" data-ed="save" title="Per a qui gestiona el repositori de Rockin">Descarrega activitats.json</button></div>`;
 }
@@ -541,7 +541,7 @@ function renderIdeas(a){
       <input type="checkbox" data-idea="${x.id}" ${on ? "checked" : ""}>
       <span class="idea-body"><b>${esc(x.titol)}</b>
         ${x.desc ? `<span>${esc(x.desc)}</span>` : ""}
-        ${ex && ex.title ? `<small>🎧 Com a ${esc(ex.title)}</small>` : ""}</span>
+        ${ex && ex.title ? `<small>Com a ${esc(ex.title)}</small>` : ""}</span>
     </label>`;
   };
   app.innerHTML = `
@@ -550,7 +550,7 @@ function renderIdeas(a){
       <h1>Idees per a la nostra cançó</h1>
       <p>${esc(a.ideesInstructions || "Totes aquestes idees han sortit a les cançons que heu escoltat. Trieu-ne les que us agradin i apliqueu-les a la cançó que esteu tocant o a una de nova.")}</p>
       <div class="status"><span class="meter"><b id="idea-n">${s.sel.length}</b> idees triades</span>
-        <button type="button" class="btn ghost" id="idea-rand">🎲 Sorprèn-me amb 3 idees</button></div>
+        <button type="button" class="btn ghost" id="idea-rand">Sorprèn-me amb 3 idees</button></div>
     </div>
     <div class="game ideas">
       <section aria-label="Banc d'idees"><h2 class="col-title">Banc d'idees</h2><div class="idea-list">${L.map(card).join("")}</div></section>
@@ -565,7 +565,7 @@ function renderIdeas(a){
             <label class="f">Grup o banda<input id="idea-banda" value="${esc(s.banda)}" placeholder="p. ex. Las croquetas de la yaya"></label>
           </div>
           <div id="repte-llista">${repteHTML(a)}</div>
-          <div class="share-row"><button type="button" class="btn primary" id="idea-print" ${s.sel.length ? "" : "disabled"}>🖨️ Imprimeix el repte</button><button type="button" class="btn" id="idea-copy" ${s.sel.length ? "" : "disabled"}>📋 Copia el text</button></div>
+          <div class="share-row"><button type="button" class="btn primary" id="idea-print" ${s.sel.length ? "" : "disabled"}>Imprimeix el repte</button><button type="button" class="btn" id="idea-copy" ${s.sel.length ? "" : "disabled"}>Copia el text</button></div>
         </div>
       </section>
     </div>`;
@@ -635,7 +635,7 @@ footer{margin-top:12px;font-size:8pt;color:#777}
 <header class="cap">${logosHTML()}<div>${s.banda ? `Grup: <b>${esc(s.banda)}</b>` : ""}</div></header>
 <h1>El nostre repte de composició</h1>
 <p class="sub">${on} · Idees sortides de l'activitat «${esc(a.title)}»</p>
-<ol>${L.map(x => { const ex = a.items.find(i => i.id === x.exemple); return `<li><h2>${esc(x.titol)}</h2>${x.desc ? `<p>${esc(x.desc)}</p>` : ""}${x.com ? `<p><b>Com provar-ho:</b> ${esc(x.com)}</p>` : ""}${ex && ex.title ? `<p><small>🎧 Exemple: ${esc(ex.title)}</small></p>` : ""}<div class="marques"><span>Ho hem provat</span><span>Ens agrada</span><span>Ho deixem</span></div></li>`; }).join("")}</ol>
+<ol>${L.map(x => { const ex = a.items.find(i => i.id === x.exemple); return `<li><h2>${esc(x.titol)}</h2>${x.desc ? `<p>${esc(x.desc)}</p>` : ""}${x.com ? `<p><b>Com provar-ho:</b> ${esc(x.com)}</p>` : ""}${ex && ex.title ? `<p><small>Exemple: ${esc(ex.title)}</small></p>` : ""}<div class="marques"><span>Ho hem provat</span><span>Ens agrada</span><span>Ho deixem</span></div></li>`; }).join("")}</ol>
 <div class="notes">Notes del grup: qui fa què, en quina part de la cançó, què hem canviat…</div>
 <footer>© Rockin SCCL · CC BY-NC-SA 4.0 · rockin-cat.github.io/escolta-i-compon</footer>
 <script>window.addEventListener("load",()=>setTimeout(()=>window.print(),400));<\/script>
@@ -655,12 +655,12 @@ function printForm(a){
     </div>
     <div class="logo-tria">
       <span class="logo-prev" id="pr-logo-prev"></span>
-      <label class="btn ghost">📎 Logo del centre<input type="file" id="pr-logo" accept="image/*" hidden></label>
+      <label class="btn ghost">Logo del centre<input type="file" id="pr-logo" accept="image/*" hidden></label>
       <button class="btn ghost" id="pr-logo-out" hidden>Treu el logo</button>
     </div>
     <div class="share-row">
-      <button class="btn primary" data-print="alumne">🖨️ Fitxa de l'alumnat</button>
-      <button class="btn" data-print="docent">🖨️ Full del docent (solucions)</button>
+      <button class="btn primary" data-print="alumne">Fitxa de l'alumnat</button>
+      <button class="btn" data-print="docent">Full del docent (solucions)</button>
       <button class="btn ghost" id="pr-cancel">Tanca</button>
     </div>
     <p class="hint">Les lletres dels fragments es barregen cada vegada que imprimeixes. Imprimeix els dos fulls alhora perquè el del docent tingui les mateixes lletres.</p>
@@ -731,7 +731,7 @@ function printSheet(a, docentView, docent, grup, ordre){
   const idees = ideesOf(a);
   const part3 = idees.length ? `<section class="p3"><h2>${vocab.length ? 3 : 2}. Idees per a la nostra cançó</h2>
     <p class="ins">${esc(a.ideesInstructions || "Totes aquestes idees han sortit a les cançons que heu escoltat.")} Marqueu les que voleu provar (us recomanem començar amb 2 o 3).</p>
-    <ul class="idees">${idees.map(x => { const ex = a.items.find(i => i.id === x.exemple); return `<li><span class="quadre"></span><div><b>${esc(x.titol)}</b>${x.desc ? ` — ${esc(x.desc)}` : ""}${docentView && ex && ex.title ? `<br><small>🎧 ${lletra(ex.id)} · ${esc(ex.title)}</small>` : ""}${docentView && x.com ? `<br><small><b>Com provar-ho:</b> ${esc(x.com)}</small>` : ""}</div></li>`; }).join("")}</ul>
+    <ul class="idees">${idees.map(x => { const ex = a.items.find(i => i.id === x.exemple); return `<li><span class="quadre"></span><div><b>${esc(x.titol)}</b>${x.desc ? ` — ${esc(x.desc)}` : ""}${docentView && ex && ex.title ? `<br><small>${lletra(ex.id)} · ${esc(ex.title)}</small>` : ""}${docentView && x.com ? `<br><small><b>Com provar-ho:</b> ${esc(x.com)}</small>` : ""}</div></li>`; }).join("")}</ul>
     <div class="repte">
       <div>Grup o banda: <span class="linia llarga"></span></div>
       <div><span class="quadre"></span> A la cançó que estem tocant: <span class="linia"></span></div>
@@ -836,7 +836,7 @@ async function publishAct(a){
       if (!j.ok && j.error === "existeix" && confirm("Ja has compartit una proposta amb aquest títol. Vols substituir-la per aquesta versió?")) j = await envia(true);
       if (!j.ok) throw new Error(j.error || "error");
       biblioLlista = [];
-      out.innerHTML = `<p class="ok-msg">✅ «${esc(act.title)}» ja és a la biblioteca de propostes.</p>`;
+      out.innerHTML = `<p class="ok-msg">«${esc(act.title)}» ja és a la biblioteca de propostes.</p>`;
     } catch (e){ out.innerHTML = `<p class="warn">${esc(missatgeError(e))}</p>`; }
   };
 }
@@ -846,11 +846,11 @@ function modal(html){
   m.innerHTML = `<div class="modal-box">${html}</div>`; m.hidden = false; return m;
 }
 async function openLibrary(refresh){
-  const m = modal(`<div class="modal-head"><h2>📚 Biblioteca de propostes</h2><button class="btn small ghost" data-close>Tanca</button></div>
+  const m = modal(`<div class="modal-head"><h2>Biblioteca de propostes</h2><button class="btn small ghost" data-close>Tanca</button></div>
     <p class="hint">Activitats que ha compartit el professorat. Pots afegir-ne una a les teves per adaptar-la, o treure'n directament l'enllaç per a l'alumnat.</p>
     <input id="bib-cerca" class="bib-cerca" placeholder="Cerca per títol, autor/a, curs o centre…" aria-label="Cerca">
     <div id="bib-llista" class="bib-llista"><p class="hint">Carregant…</p></div>
-    <div class="modal-foot"><button class="btn small ghost" id="bib-codi">🔑 Canvia el codi</button></div>`);
+    <div class="modal-foot"><button class="btn small ghost" id="bib-codi">Canvia el codi</button></div>`);
   $("#bib-codi", m).onclick = () => { if (codiBiblio(true)) openLibrary(true); };
   $("#bib-cerca", m).oninput = pintaBiblio;
   if (biblioLlista.length && !refresh) return pintaBiblio();
@@ -864,7 +864,7 @@ function pintaBiblio(){
       <div class="bib-info"><b>${esc(x.titol || x.nom)}</b>
         <span>${esc([x.autor, x.centre, x.curs].filter(Boolean).join(" · "))}</span>
         <span class="meta">${x.cancons || "?"} cançons${x.conceptes ? ` · ${x.conceptes} conceptes` : ""} · ${esc((x.data || "").slice(0, 10))}</span></div>
-      <div class="bib-acc"><button class="btn small" data-bib-add="${esc(x.id)}">Afegeix a les meves</button><button class="btn small ghost" data-bib-link="${esc(x.id)}">🔗 Enllaç alumnat</button></div>
+      <div class="bib-acc"><button class="btn small" data-bib-add="${esc(x.id)}">Afegeix a les meves</button><button class="btn small ghost" data-bib-link="${esc(x.id)}">Enllaç alumnat</button></div>
     </div>`).join("") : `<p class="hint">${biblioLlista.length ? "Cap proposta coincideix amb la cerca." : "Encara no hi ha cap proposta. Sigues la primera persona a compartir-ne una!"}</p>`;
 }
 document.addEventListener("click", async e => {

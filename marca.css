@@ -6,16 +6,6 @@
   --body:"Ubuntu",Helvetica,Arial,sans-serif;
   --mono:"Ubuntu Mono",ui-monospace,Menlo,monospace;
 }
-@media (prefers-color-scheme:dark){
-  :root:not([data-theme="light"]){
-    --ground:#171414; --surface:#221F20; --surface-2:#2B2725; --ink:#F3EFE8; --muted:#A8A09A; --line:#3A3432;
-    --accent:#FDBE10; --accent-ink:#221F20; --accent-soft:#3A3014; --tape:#FDBE10; --tape-ink:#221F20;
-  }
-}
-:root[data-theme="dark"]{
-  --ground:#171414; --surface:#221F20; --surface-2:#2B2725; --ink:#F3EFE8; --muted:#A8A09A; --line:#3A3432;
-  --accent:#FDBE10; --accent-ink:#221F20; --accent-soft:#3A3014; --tape:#FDBE10; --tape-ink:#221F20;
-}
 /* franja groga de capçalera, com a rockin.cat */
 body{padding-inline:0;margin:0}
 .pool{grid-template-columns:repeat(auto-fill,minmax(190px,1fr))}
