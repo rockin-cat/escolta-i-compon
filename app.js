@@ -11,6 +11,8 @@ const TEACHER = new URLSearchParams(location.search).has("professorat");
 // Adreça de l'aplicació web de Google Apps Script de la biblioteca (Implementa → Aplicació web).
 const URL_BIBLIOTECA = "https://script.google.com/macros/s/AKfycbwZJIcfAZKnd643SiQGJ8QGiqKCiZmtLBSLhsy7a1rJAxxDKQpygDnU73naST_d7LMM/exec";
 const K_DRAFT = "ea-meves-activitats", K_CODI = "ea-codi-biblioteca", K_AUTOR = "ea-autor", K_LOGO = "ea-logo";
+const K_CLASSE = "ea-codi-classe", K_ALUMNE = "ea-alumne-";   // codi de classe (docent) i nom de l'alumne/a (per classe)
+let CLASSE = "", ALUMNE = "";   // plens només quan s'obre un enllaç amb codi de classe
 const ICO_ROCKIN = "https://rockin.cat/wp-content/uploads/2022/07/cropped-rockin-favicon-192x192.png";
 // Capçalera dels fulls impresos: logo del centre (opcional) + icona rodona de Rockin.
 function logosHTML(){
@@ -254,6 +256,7 @@ function check(){
   g.done = listOf(a).every(it => g.ok[it.id]);
   if (g.done && state.part === 1) refreshSteps(a);
   updateGame();
+  enviaResultat({part: state.part, encerts: Object.keys(g.ok).length, total: listOf(a).length, acabat: !!g.done});
   if (g.done) $("#banner").scrollIntoView({behavior: "smooth", block: "nearest"});
   if (g.done) return;
   toast(badN ? `${badN} ${badN === 1 ? "no encaixa" : "no encaixen"}. ${state.part === 2 ? "Torna-ho a provar!" : "Torna-ho a escoltar!"}` : "Tot el que has col·locat és correcte. Continua!");
@@ -349,6 +352,7 @@ function renderEditor(){
         <button class="btn" data-ed="publish">Comparteix a la biblioteca</button>
         <button class="btn" data-ed="biblio">Biblioteca de propostes</button>
         <button class="btn" data-ed="print">Versió imprimible</button>
+        <button class="btn" data-ed="classe">Codi de classe i resultats</button>
       </div>
       <div id="share-out"></div>
       <p class="hint">L'enllaç porta l'activitat a dins: l'alumnat l'obre directament, sense cap altra activitat ni el mode professorat. Els canvis que facis es guarden en aquest navegador.</p>
@@ -445,6 +449,7 @@ app.addEventListener("click", async e => {
     case "publish": return publishAct(a);
     case "biblio": return openLibrary();
     case "print": return printForm(a);
+    case "classe": return panelClasse(a);
   }
   markDirty(); renderEditorKeep();
 });
@@ -510,14 +515,15 @@ function actError(a){
   }
   return null;
 }
-function studentUrl(packed){ return location.origin + location.pathname + "#a=" + packed; }
-async function shareLink(a){
+function studentUrl(packed, classe){ return location.origin + location.pathname + "#a=" + packed + (classe ? "&c=" + encodeURIComponent(classe) : ""); }
+async function shareLink(a, classe){
   const err = actError(a); if (err){ toast(err); return; }
-  const url = studentUrl(await packAct(a));
+  const url = studentUrl(await packAct(a), classe);
   let copied = false; try { await navigator.clipboard.writeText(url); copied = true; } catch (e) {}
   $("#share-out").innerHTML = `<div class="share-link">
     <label class="f">${copied ? "Enllaç copiat! Enganxa'l al Classroom, al correu o on vulguis." : "Copia aquest enllaç:"}<input id="share-url" readonly value="${esc(url)}"></label>
     <a class="btn small" href="${esc(url)}" target="_blank" rel="noopener">Prova-ho com l'alumnat ↗</a>
+    ${classe ? `<p class="hint">Enllaç de la classe <b>${esc(classe)}</b>: qui l'obri escriurà el nom i cognom i els seus encerts et quedaran a «Mira els resultats».</p>` : ""}
   </div>`;
   const inp = $("#share-url"); inp.addEventListener("focus", () => inp.select()); if (!copied) inp.focus();
 }
@@ -590,13 +596,14 @@ function refreshIdeas(a){
 app.addEventListener("change", e => {
   if (state.mode !== "alumne" || state.part !== 3) return;
   const a = act(), s = ideaState(), t = e.target;
-  if (t.dataset.idea){ s.sel = t.checked ? [...s.sel, t.dataset.idea] : s.sel.filter(x => x !== t.dataset.idea); refreshIdeas(a); }
+  if (t.dataset.idea){ s.sel = t.checked ? [...s.sel, t.dataset.idea] : s.sel.filter(x => x !== t.dataset.idea); refreshIdeas(a); enviaRepte(a); }
   else if (t.name === "desti"){ s.desti = t.value; renderIdeas(a); }
 });
 app.addEventListener("input", e => {
   if (state.mode !== "alumne" || state.part !== 3) return;
   if (e.target.id === "idea-canco") ideaState().canco = e.target.value;
   if (e.target.id === "idea-banda") ideaState().banda = e.target.value;
+  if (e.target.id === "idea-canco" || e.target.id === "idea-banda") enviaRepte(act());
 });
 app.addEventListener("click", async e => {
   if (state.mode !== "alumne" || state.part !== 3) return;
@@ -902,7 +909,138 @@ function renderTabs(){
   nav.innerHTML = (oficials.length ? `<span class="acts-lab">De Rockin</span>${oficials.map(tab).join("")}` : "")
     + (meves.length ? `<span class="acts-lab">Les meves</span>${meves.map(tab).join("")}` : "");
 }
-function render(){ renderModes(); renderTabs(); state.mode === "prof" ? renderEditor() : renderGame(); }
+function render(){
+  if (SHARED && CLASSE && !ALUMNE) return renderGate();
+  renderModes(); renderTabs(); state.mode === "prof" ? renderEditor() : renderGame();
+}
+
+/* ---------- codi de classe: l'alumnat s'identifica i el resultat va al professorat ---------- */
+function renderGate(){
+  $("#modes").hidden = true; $("#acts").hidden = true;
+  app.innerHTML = `<div class="head">
+    <h1>Abans de començar</h1>
+    <p>Escriu el teu nom i cognom perquè el teu professor o professora pugui veure com t'ha anat.</p>
+  </div>
+  <div class="panel">
+    <label class="f">Nom i cognom<input id="al-nom" maxlength="80" autocomplete="name" placeholder="p. ex. Laia González"></label>
+    <div class="share-row"><button class="btn primary" id="al-ok">Comença l'activitat</button></div>
+    <p class="hint">Classe <b>${esc(CLASSE)}</b>. Es desaran el teu nom i els encerts de cada part, res més. No cal cap compte ni contrasenya.</p>
+  </div>`;
+  const inp = $("#al-nom");
+  const ok = () => {
+    const n = inp.value.trim().replace(/\s+/g, " ");
+    if (n.length < 3 || !n.includes(" ")){ toast("Escriu el nom i el cognom."); inp.focus(); return; }
+    ALUMNE = n.slice(0, 80); escriureLocal(K_ALUMNE + CLASSE, ALUMNE); render(); window.scrollTo(0, 0);
+  };
+  $("#al-ok").onclick = ok;
+  inp.addEventListener("keydown", e => { if (e.key === "Enter") ok(); });
+  inp.focus();
+}
+async function enviaResultat(dades){
+  if (!SHARED || !CLASSE || !ALUMNE || !URL_BIBLIOTECA) return;
+  try {
+    await fetch(URL_BIBLIOTECA, {method: "POST", headers: {"Content-Type": "text/plain;charset=utf-8"},
+      body: JSON.stringify(Object.assign({accio: "resultat", classe: CLASSE, alumne: ALUMNE, activitat: (act() || {}).title || ""}, dades))});
+  } catch (e) {}   // si falla la connexió, l'activitat continua igualment
+}
+let repteTimer = null;
+function enviaRepte(a){
+  if (!CLASSE || !a) return;
+  clearTimeout(repteTimer);
+  repteTimer = setTimeout(() => {
+    const s = ideaState(), L = ideesOf(a).filter(x => s.sel.includes(x.id));
+    if (!L.length) return;
+    enviaResultat({part: 3, encerts: L.length, total: ideesOf(a).length,
+      detall: [s.banda ? "Banda: " + s.banda : "", s.canco ? "Cançó: " + s.canco : "", "Idees: " + L.map(x => x.titol).join(" | ")].filter(Boolean).join(" · ")});
+  }, 2500);
+}
+function codiClasseNou(){
+  const l = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  return Array.from({length: 5}, () => l[Math.floor(Math.random() * l.length)]).join("");
+}
+function panelClasse(a){
+  const err = actError(a); if (err){ toast(err); return; }
+  const codi = llegirLocal(K_CLASSE) || codiClasseNou();
+  escriureLocal(K_CLASSE, codi);
+  $("#share-out").innerHTML = `<div class="share-form">
+    <label class="f">Codi de classe<input id="cl-codi" maxlength="24" value="${esc(codi)}" placeholder="p. ex. 2ESOB-K7"></label>
+    <div class="share-row">
+      <button class="btn primary" id="cl-link">🔗 Enllaç amb codi per a l'alumnat</button>
+      <button class="btn" id="cl-res">📊 Mira els resultats</button>
+      <button class="btn ghost" id="cl-nou">Canvia el codi</button>
+      <button class="btn ghost" id="cl-cancel">Tanca</button>
+    </div>
+    <p class="hint">Amb aquest enllaç, l'alumnat escriu el nom i cognom i els encerts de cada part et van arribant. Fes servir un codi diferent per a cada grup.</p>
+    <p class="hint">Els resultats es desen al Drive de Rockin, només es poden consultar amb el codi del professorat i s'esborren sols al cap de 90 dies.</p>
+  </div>`;
+  const codiAra = () => ($("#cl-codi").value || "").trim().toUpperCase().slice(0, 24);
+  $("#cl-codi").oninput = () => escriureLocal(K_CLASSE, codiAra());
+  $("#cl-cancel").onclick = () => $("#share-out").innerHTML = "";
+  $("#cl-nou").onclick = () => { const c = codiClasseNou(); $("#cl-codi").value = c; escriureLocal(K_CLASSE, c); };
+  $("#cl-link").onclick = () => { const c = codiAra(); if (!c) return toast("Escriu un codi de classe."); escriureLocal(K_CLASSE, c); shareLink(a, c); };
+  $("#cl-res").onclick = () => { const c = codiAra(); if (!c) return toast("Escriu un codi de classe."); openResultats(c); };
+}
+
+/* ---------- resultats de la classe (vista del professorat) ---------- */
+let resFiles = [], resClasse = "";
+async function openResultats(classe){
+  resClasse = classe; resFiles = [];
+  const m = modal(`<div class="modal-head"><h2>Resultats de la classe ${esc(classe)}</h2><button class="btn small ghost" data-close>Tanca</button></div>
+    <div id="res-llista"><p class="hint">Carregant…</p></div>
+    <div class="modal-foot"><button class="btn small" id="res-csv">Descarrega CSV</button><button class="btn small ghost" id="res-del">Esborra els resultats d'aquesta classe</button></div>`);
+  $("#res-csv", m).onclick = csvResultats;
+  $("#res-del", m).onclick = e => {
+    const b = e.target;
+    if (b.dataset.confirm !== "1"){ b.dataset.confirm = "1"; b.textContent = "Segur? No es podrà desfer"; return; }
+    buidaResultats(classe);
+  };
+  try {
+    const j = await peticioBiblio("GET", {accio: "resultats", classe});
+    if (!j.ok) throw new Error(j.error);
+    resFiles = j.files || [];
+    pintaResultats(j.full || "");
+  } catch (e){ $("#res-llista").innerHTML = `<p class="warn">${esc(missatgeError(e))}</p>`; }
+}
+function resPerAlumne(){
+  const per = new Map();
+  resFiles.forEach(f => {
+    const k = (f.alumne || "").toLowerCase().trim(); if (!k) return;
+    if (!per.has(k)) per.set(k, {alumne: f.alumne, p1: null, p2: null, p3: "", data: f.data});
+    const x = per.get(k);
+    if (f.data > x.data) x.data = f.data;
+    if (f.part === 1 && (!x.p1 || f.encerts > x.p1.e)) x.p1 = {e: f.encerts, t: f.total};
+    if (f.part === 2 && (!x.p2 || f.encerts > x.p2.e)) x.p2 = {e: f.encerts, t: f.total};
+    if (f.part === 3 && !x.p3) x.p3 = f.detall || `${f.encerts} idees`;
+  });
+  return [...per.values()].sort((a, b) => a.alumne.localeCompare(b.alumne, "ca"));
+}
+function dataCurta(s){ const d = new Date(s); return isNaN(d) ? "" : d.toLocaleString("ca-ES", {day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit"}); }
+function pintaResultats(urlFull){
+  const L = resPerAlumne();
+  const nota = p => p ? `<span class="${p.e === p.t && p.t ? "res-ok" : ""}">${p.e}/${p.t}</span>` : "—";
+  $("#res-llista").innerHTML = !L.length
+    ? `<p class="hint">Encara no hi ha resultats d'aquesta classe. Comprova que l'alumnat obre l'enllaç que porta el codi.</p>`
+    : `<p class="hint">${L.length} ${L.length === 1 ? "alumne/a" : "alumnes"} · ${resFiles.length} enviaments${urlFull ? ` · <a href="${esc(urlFull)}" target="_blank" rel="noopener">obre el full de càlcul ↗</a>` : ""}</p>
+      <table class="res-taula"><thead><tr><th>Alumne/a</th><th>Part 1</th><th>Part 2</th><th>Repte de composició</th><th>Última vegada</th></tr></thead>
+      <tbody>${L.map(x => `<tr><td><b>${esc(x.alumne)}</b></td><td>${nota(x.p1)}</td><td>${nota(x.p2)}</td><td class="res-repte">${esc(x.p3)}</td><td class="res-data">${esc(dataCurta(x.data))}</td></tr>`).join("")}</tbody></table>`;
+}
+function csvResultats(){
+  const L = resPerAlumne();
+  if (!L.length) return toast("Encara no hi ha resultats per descarregar.");
+  const q = v => `"${String(v == null ? "" : v).replace(/"/g, '""')}"`;
+  const linies = [["alumne/a", "part 1", "part 2", "repte de composició", "última vegada"].map(q).join(",")]
+    .concat(L.map(x => [x.alumne, x.p1 ? x.p1.e + "/" + x.p1.t : "", x.p2 ? x.p2.e + "/" + x.p2.t : "", x.p3, dataCurta(x.data)].map(q).join(",")));
+  const url = URL.createObjectURL(new Blob(["\ufeff" + linies.join("\n")], {type: "text/csv;charset=utf-8"}));
+  const a = document.createElement("a"); a.href = url; a.download = `resultats-${resClasse}.csv`; a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+}
+async function buidaResultats(classe){
+  try {
+    const j = await peticioBiblio("POST", {accio: "esborra-resultats", classe});
+    if (!j.ok) throw new Error(j.error);
+    resFiles = []; pintaResultats(""); toast(`S'han esborrat ${j.esborrades} enviaments.`);
+  } catch (e){ toast(missatgeError(e)); }
+}
 
 $("#modes").addEventListener("click", e => {
   const b = e.target.closest("[data-mode]"); if (!b || b.dataset.mode === state.mode) return;
@@ -925,7 +1063,13 @@ try {
 async function boot(){
   const h = location.hash.match(/^#a=([\w-]+)/);
   if (h){
-    try { const a = await unpackAct(h[1]); if (!a || !Array.isArray(a.items)) throw new Error("format"); DATA = {activitats: [a]}; SHARED = true; state.actId = a.id; return; }
+    try {
+      const a = await unpackAct(h[1]); if (!a || !Array.isArray(a.items)) throw new Error("format");
+      DATA = {activitats: [a]}; SHARED = true; state.actId = a.id;
+      const c = location.hash.match(/[#&]c=([^&]+)/);
+      if (c){ CLASSE = decodeURIComponent(c[1]).trim().toUpperCase().slice(0, 24); ALUMNE = llegirLocal(K_ALUMNE + CLASSE); }
+      return;
+    }
     catch (e){ toast("L'enllaç de l'activitat no és correcte o està incomplet."); }
   }
   const r = await fetch("activitats.json", {cache: "no-store"}); if (!r.ok) throw new Error(r.status); return r.json();

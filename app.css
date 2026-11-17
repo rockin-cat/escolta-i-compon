@@ -184,4 +184,12 @@ label.f textarea{min-height:88px;resize:vertical}
 .logo-prev{font-size:13px;color:var(--muted);display:inline-flex;align-items:center;min-height:36px}
 .logo-prev img{max-height:36px;max-width:130px;background:#fff;border:1px solid var(--line);border-radius:4px;padding:3px}
 label.btn{cursor:pointer}
+
+/* resultats de la classe */
+.res-taula{width:100%;border-collapse:collapse;font-size:14px}
+.res-taula th,.res-taula td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+.res-taula th{font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:400}
+.res-taula .res-ok{background:var(--accent-soft);border-radius:3px;padding:1px 7px;font-weight:700}
+.res-repte{color:var(--muted);max-width:330px}
+.res-data{color:var(--muted);white-space:nowrap}
 .acts button[aria-current="true"]{background:var(--ink);color:var(--ground);border-color:var(--ink)}
