@@ -110,9 +110,9 @@ document.addEventListener("click", e => {
 function G(){ return state.part === 2 ? state.voc : state.game; }
 function vocabOf(a){ return (a && Array.isArray(a.vocab) ? a.vocab : []).filter(v => v.term && v.def); }
 function listOf(a){ return state.part === 2 ? vocabOf(a) : a.items; }
-function newVoc(a){ state.voc = {order: shuffle(vocabOf(a).map(v => v.id)), placed: {}, ok: {}, bad: {}, done: false, selected: null}; }
+function newVoc(a){ state.voc = {order: shuffle(vocabOf(a).map(v => v.id)), placed: {}, ok: {}, bad: {}, done: false, selected: null, t0: Date.now(), intents: 0}; }
 function newGame(a){
-  state.game = {order: shuffle(a.items.map(i => i.id)), placed: {}, ok: {}, bad: {}, done: false, selected: null};
+  state.game = {order: shuffle(a.items.map(i => i.id)), placed: {}, ok: {}, bad: {}, done: false, selected: null, t0: Date.now(), intents: 0};
 }
 function labelOf(itemId){
   if (state.part === 2){ const v = vocabOf(act()).find(x => x.id === itemId); return v ? v.term : "?"; }
@@ -256,7 +256,8 @@ function check(){
   g.done = listOf(a).every(it => g.ok[it.id]);
   if (g.done && state.part === 1) refreshSteps(a);
   updateGame();
-  enviaResultat({part: state.part, encerts: Object.keys(g.ok).length, total: listOf(a).length, acabat: !!g.done});
+  g.intents = (g.intents || 0) + 1;
+  enviaResultat({part: state.part, encerts: Object.keys(g.ok).length, total: listOf(a).length, acabat: !!g.done, detall: detallIntent(a, g)});
   if (g.done) $("#banner").scrollIntoView({behavior: "smooth", block: "nearest"});
   if (g.done) return;
   toast(badN ? `${badN} ${badN === 1 ? "no encaixa" : "no encaixen"}. ${state.part === 2 ? "Torna-ho a provar!" : "Torna-ho a escoltar!"}` : "Tot el que has col·locat és correcte. Continua!");
@@ -936,6 +937,31 @@ function renderGate(){
   inp.addEventListener("keydown", e => { if (e.key === "Enter") ok(); });
   inp.focus();
 }
+// Què ha posat on, quants intents i quanta estona: el que el professorat vol saber.
+function nomDe(a, id){
+  if (state.part === 2){ const v = (a.vocab || []).find(x => x.id === id); return v && v.term ? v.term : "?"; }
+  const it = (a.items || []).find(x => x.id === id);
+  return it && it.title ? it.title : "?";
+}
+function netejaNom(s){ return String(s).replace(/[\u2192;\u00b7|]/g, " ").replace(/\s+/g, " ").trim().slice(0, 44) || "?"; }
+function detallIntent(a, g){
+  const trossos = [`${g.intents} ${g.intents === 1 ? "intent" : "intents"}`];
+  if (g.t0){ const m = Math.round((Date.now() - g.t0) / 60000); trossos.push(m < 1 ? "menys d'1 min" : `${m} min`); }
+  const mal = Object.keys(g.bad).map(d => `${netejaNom(nomDe(a, g.placed[d]))} \u2192 ${netejaNom(nomDe(a, d))}`);
+  trossos.push(mal.length ? "Confusions: " + mal.join("; ") : "Tot correcte");
+  return trossos.join(" \u00b7 ").slice(0, 470);
+}
+// Torna a llegir el que hem escrit a «detall» per poder-ho resumir per a la classe.
+function llegeixDetall(t){
+  const s = String(t || ""), out = {intents: null, temps: "", confusions: []};
+  const mi = s.match(/(\d+)\s+intents?/); if (mi) out.intents = Number(mi[1]);
+  const mt = s.match(/(menys d'1 min|\d+ min)/); if (mt) out.temps = mt[1];
+  const mc = s.match(/Confusions:\s*(.+)$/);
+  if (mc) out.confusions = mc[1].split(";").map(x => x.trim()).filter(Boolean)
+    .map(x => x.split("\u2192").map(y => y.trim())).filter(p => p.length === 2 && p[0] && p[1])
+    .map(p => p[0] + " \u2192 " + p[1]);
+  return out;
+}
 async function enviaResultat(dades){
   if (!SHARED || !CLASSE || !ALUMNE || !URL_BIBLIOTECA) return;
   try {
@@ -1005,31 +1031,67 @@ function resPerAlumne(){
   const per = new Map();
   resFiles.forEach(f => {
     const k = (f.alumne || "").toLowerCase().trim(); if (!k) return;
-    if (!per.has(k)) per.set(k, {alumne: f.alumne, p1: null, p2: null, p3: "", data: f.data});
-    const x = per.get(k);
+    if (!per.has(k)) per.set(k, {alumne: f.alumne, p1: null, p2: null, p3: "", data: f.data, conf1: new Set(), conf2: new Set()});
+    const x = per.get(k), d = llegeixDetall(f.detall);
     if (f.data > x.data) x.data = f.data;
-    if (f.part === 1 && (!x.p1 || f.encerts > x.p1.e)) x.p1 = {e: f.encerts, t: f.total};
-    if (f.part === 2 && (!x.p2 || f.encerts > x.p2.e)) x.p2 = {e: f.encerts, t: f.total};
+    if (f.part === 1 || f.part === 2){
+      const camp = f.part === 1 ? "p1" : "p2";
+      d.confusions.forEach(c => (f.part === 1 ? x.conf1 : x.conf2).add(c));
+      if (!x[camp] || f.encerts > x[camp].e) x[camp] = {e: f.encerts, t: f.total, intents: d.intents, temps: d.temps};
+    }
     if (f.part === 3 && !x.p3) x.p3 = f.detall || `${f.encerts} idees`;
   });
   return [...per.values()].sort((a, b) => a.alumne.localeCompare(b.alumne, "ca"));
 }
+// Resum de la classe: com ha anat cada part i què es confon més.
+function resResum(L){
+  const mitjana = camp => {
+    const v = L.map(x => x[camp]).filter(Boolean);
+    if (!v.length) return null;
+    return {n: v.length, mitja: v.reduce((s, p) => s + p.e, 0) / v.length, total: v[0].t, fets: v.filter(p => p.e === p.t).length};
+  };
+  const top = camp => {
+    const m = new Map();
+    L.forEach(x => x[camp].forEach(c => m.set(c, (m.get(c) || 0) + 1)));
+    return [...m.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6);
+  };
+  return {p1: mitjana("p1"), p2: mitjana("p2"), c1: top("conf1"), c2: top("conf2")};
+}
 function dataCurta(s){ const d = new Date(s); return isNaN(d) ? "" : d.toLocaleString("ca-ES", {day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit"}); }
 function pintaResultats(urlFull){
   const L = resPerAlumne();
-  const nota = p => p ? `<span class="${p.e === p.t && p.t ? "res-ok" : ""}">${p.e}/${p.t}</span>` : "—";
-  $("#res-llista").innerHTML = !L.length
-    ? `<p class="hint">Encara no hi ha resultats d'aquesta classe. Comprova que l'alumnat obre l'enllaç que porta el codi.</p>`
-    : `<p class="hint">${L.length} ${L.length === 1 ? "alumne/a" : "alumnes"} · ${resFiles.length} enviaments${urlFull ? ` · <a href="${esc(urlFull)}" target="_blank" rel="noopener">obre el full de càlcul ↗</a>` : ""}</p>
-      <table class="res-taula"><thead><tr><th>Alumne/a</th><th>Part 1</th><th>Part 2</th><th>Repte de composició</th><th>Última vegada</th></tr></thead>
-      <tbody>${L.map(x => `<tr><td><b>${esc(x.alumne)}</b></td><td>${nota(x.p1)}</td><td>${nota(x.p2)}</td><td class="res-repte">${esc(x.p3)}</td><td class="res-data">${esc(dataCurta(x.data))}</td></tr>`).join("")}</tbody></table>`;
+  if (!L.length){
+    $("#res-llista").innerHTML = `<p class="hint">Encara no hi ha resultats d'aquesta classe. Comprova que l'alumnat obre l'enllaç que porta el codi.</p>`;
+    return;
+  }
+  const R = resResum(L), num = n => (Math.round(n * 10) / 10).toString().replace(".", ",");
+  const resum = c => c ? `mitjana ${num(c.mitja)}/${c.total} · ${c.fets} de ${c.n} l'han completada` : "encara no l'ha fet ningú";
+  const conf = (c, t) => c.length ? `<div class="res-conf"><b>${t}</b><ol>${c.map(([k, n]) => `<li>${esc(k)} <span>${n} ${n === 1 ? "alumne/a" : "alumnes"}</span></li>`).join("")}</ol></div>` : "";
+  const cel = (p, s) => {
+    if (!p) return "—";
+    const peu = [p.intents ? p.intents + (p.intents === 1 ? " intent" : " intents") : "", p.temps].filter(Boolean).join(" · ");
+    return `<span class="${p.e === p.t && p.t ? "res-ok" : ""}">${p.e}/${p.t}</span>`
+      + (peu ? `<span class="res-mini">${esc(peu)}</span>` : "")
+      + (s && s.size ? `<span class="res-mini res-err">${[...s].map(esc).join("<br>")}</span>` : "");
+  };
+  $("#res-llista").innerHTML = `<p class="hint">${L.length} ${L.length === 1 ? "alumne/a" : "alumnes"} · ${resFiles.length} enviaments${urlFull ? ` · <a href="${esc(urlFull)}" target="_blank" rel="noopener">obre el full de càlcul ↗</a>` : ""}</p>
+    <div class="res-resum">
+      <div><b>Part 1 · escolta i relaciona</b><span>${resum(R.p1)}</span></div>
+      <div><b>Part 2 · vocabulari musical</b><span>${resum(R.p2)}</span></div>
+    </div>
+    ${conf(R.c1, "Cançons que més es confonen")}
+    ${conf(R.c2, "Conceptes que més costen")}
+    <table class="res-taula"><thead><tr><th>Alumne/a</th><th>Part 1</th><th>Part 2</th><th>Repte de composició</th><th>Última vegada</th></tr></thead>
+    <tbody>${L.map(x => `<tr><td><b>${esc(x.alumne)}</b></td><td>${cel(x.p1, x.conf1)}</td><td>${cel(x.p2, x.conf2)}</td><td class="res-repte">${esc(x.p3)}</td><td class="res-data">${esc(dataCurta(x.data))}</td></tr>`).join("")}</tbody></table>`;
 }
 function csvResultats(){
   const L = resPerAlumne();
   if (!L.length) return toast("Encara no hi ha resultats per descarregar.");
   const q = v => `"${String(v == null ? "" : v).replace(/"/g, '""')}"`;
-  const linies = [["alumne/a", "part 1", "part 2", "repte de composició", "última vegada"].map(q).join(",")]
-    .concat(L.map(x => [x.alumne, x.p1 ? x.p1.e + "/" + x.p1.t : "", x.p2 ? x.p2.e + "/" + x.p2.t : "", x.p3, dataCurta(x.data)].map(q).join(",")));
+  const nota = p => p ? p.e + "/" + p.t : "";
+  const extra = p => p ? [p.intents ? p.intents + " intents" : "", p.temps].filter(Boolean).join(" · ") : "";
+  const linies = [["alumne/a", "part 1", "intents i temps 1", "confusions part 1", "part 2", "intents i temps 2", "confusions part 2", "repte de composició", "última vegada"].map(q).join(",")]
+    .concat(L.map(x => [x.alumne, nota(x.p1), extra(x.p1), [...x.conf1].join(" ; "), nota(x.p2), extra(x.p2), [...x.conf2].join(" ; "), x.p3, dataCurta(x.data)].map(q).join(",")));
   const url = URL.createObjectURL(new Blob(["\ufeff" + linies.join("\n")], {type: "text/csv;charset=utf-8"}));
   const a = document.createElement("a"); a.href = url; a.download = `resultats-${resClasse}.csv`; a.click();
   setTimeout(() => URL.revokeObjectURL(url), 2000);
